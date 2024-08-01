@@ -1,8 +1,8 @@
 const { Client, PermissionsBitField, IntentsBitField } = require('discord.js');
 require('dotenv').config();
+const { aboutBotEmbed } = require('./embeds');
 
 const token = process.env.TOKEN;
-const prefix = '>';
 
 const client = new Client({
     intents: [
@@ -17,63 +17,74 @@ client.on('ready', () => {
    console.log('Bot ' + client.user.username + ' is ready to use.')
 });
 
-client.on('messageCreate', message => {
-    if (message.author.bot) {
-        return;
-    }
-    if (!message.content.startsWith(prefix)) {
-        return;
-    }
+client.on('interactionCreate', interaction => {
+    if (!interaction.isChatInputCommand()) return;
+    if (interaction.user.bot) return;
 
-    const args = message.content.trim().split(/ +/g);
-    const cmd = args[0].slice(prefix.length).toLowerCase();
-
-    switch (cmd) {
+    switch (interaction.commandName) {
+        case 'about':
+            interaction.reply({ embeds: [aboutBotEmbed] });
+            break;
         case 'help':
-            if (!args[1]) {
-                message.reply('Commands to use:\n- >help create');
-            } else if (args[1] === 'create') {
-                message.reply('' +
-                    'Command create has 2 arguments:\n' +
-                    '- Project name\n' +
-                    '- Users (divide by space)\n' +
-                    'Example: create Project-Name @User1 @User2 @User3'
-                );
-            } else if (args[2]) {
-                message.reply('Too many arguments.');
+            if (!interaction.options.data[0]) {
+                interaction.reply('Commands to use:\n- /help create');
+            } else {
+                let command = interaction.options.get('command');
+                switch (command.value) {
+                    case 'create':
+                        interaction.reply('' +
+                            'Command create has 2 arguments:\n' +
+                            '- Project name\n' +
+                            '- Users (divide by space)\n' +
+                            'Example: create Project-Name @User1 @User2 @User3'
+                        );
+                        break;
+                    default:
+                        interaction.reply('Command not found.');
+                }
             }
             break;
         case 'create':
-            if (!args[2]) {
-                message.reply('Not enough arguments. See >help for more information.');
+            if (!interaction.options.data[1]) {
+                interaction.reply('Not enough arguments. See /help for more information.');
             } else {
-                let projectName = args[1];
-                let userIDs = message.mentions.users;
-                message.reply('' +
+                let projectName = interaction.options.get('project-name').value;
+                let users = interaction.options.get('users').value.trim().split(/ +/g);
+
+                interaction.reply('' +
                     'Project name: ' + projectName + '\n' +
-                    'User IDs: ' + args.slice(2)
+                    'User IDs: ' + users
                 );
-                message.guild.roles.create({
+
+                interaction.guild.roles.create({
                     name: projectName,
                     reason: 'New project',
                 })
                     .then(role => {
-                        message.channel.send('Role created successfully.');
+                        interaction.channel.send('Role created successfully.');
 
-                        userIDs.forEach(id => {
-                            message.guild.members.fetch(id)
-                                .then(member => {
-                                    member.roles.add(role)
-                                });
+                        users.forEach(user => {
+                            if (user.startsWith('<@') && user.endsWith('>')) {
+                                user = user.slice(2, -1);
+                                if (user.startsWith('!')) {
+                                    user = user.slice(1);
+                                }
+
+                                interaction.guild.members.fetch(user)
+                                    .then(member => {
+                                        member.roles.add(role)
+                                    });
+                            }
                         });
-                        message.channel.send('Roles assigned successfully.');
 
-                        message.guild.channels.create({
+                        interaction.channel.send('Roles assigned successfully.');
+
+                        interaction.guild.channels.create({
                             name: projectName,
                             type: 4,
                             permissionOverwrites: [
                                 {
-                                    id: message.guild.roles.everyone.id,
+                                    id: interaction.guild.roles.everyone.id,
                                     deny: [
                                         PermissionsBitField.Flags.ViewChannel,
                                     ],
@@ -87,33 +98,33 @@ client.on('messageCreate', message => {
                             ],
                         })
                             .then(category => {
-                                message.guild.channels.create({
+                                interaction.guild.channels.create({
                                     name: '💬︱chat',
                                     type: 0,
                                     parent: category.id,
                                 });
 
-                                message.guild.channels.create({
+                                interaction.guild.channels.create({
                                     name: '🔊︱voicechat',
                                     type: 2,
                                     parent: category.id,
                                 });
 
-                                message.channel.send('Category created successfully.');
+                                interaction.channel.send('Category created successfully.');
                             })
                             .catch(error => {
-                                message.channel.send('An error occurred.');
+                                interaction.channel.send('An error occurred.');
                                 console.log(error);
                             });
                     })
                     .catch(error => {
-                        message.channel.send('An error occurred.');
+                        interaction.channel.send('An error occurred.');
                         console.log(error);
                     });
             }
             break;
         default:
-            message.reply('Invalid command. See >help for more information.');
+            interaction.reply('Invalid command. See /help for more information.');
     }
 });
 
