@@ -35,6 +35,18 @@ const commands = [
             },
         ]
     },
+    {
+        name: 'partner',
+        description: 'Partner up with someone',
+        options: [
+            {
+                name: 'user',
+                description: 'User to partner up with.',
+                type: 6,
+                required: true,
+            },
+        ]
+    },
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
