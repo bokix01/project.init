@@ -19,41 +19,52 @@ client.on('ready', () => {
    client.user.setActivity({
        name: 'xiko',
        type: ActivityType.Listening
-   })
+   });
 });
 
-client.on('interactionCreate', interaction => {
+client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.user.bot) return;
+    let projectName;
+    let users;
 
     switch (interaction.commandName) {
         case 'about':
-            interaction.reply({ embeds: [aboutBotEmbed] });
+            interaction.reply({embeds: [aboutBotEmbed]});
             break;
         case 'help':
             if (!interaction.options.data[0]) {
                 interaction.reply('Commands to use:\n' +
-                    '- /about\n' +
-                    '- /partner\n' +
-                    '- /create\n' +
-                    '- /help\n' +
-                    '- /help {command}');
+                    '`/about`\n' +
+                    '`/partner`\n' +
+                    '`/create`\n' +
+                    '`/add`\n' +
+                    '`/help`\n' +
+                    '`/help {command}`');
             } else {
                 let command = interaction.options.get('command');
                 switch (command.value) {
                     case 'create':
                         interaction.reply('' +
-                            'Command create has 2 arguments:\n' +
+                            'Command `/create` has 2 arguments:\n' +
                             '- Project name\n' +
                             '- Users (divide by space)\n' +
-                            'Example: /create Project-Name @User1 @User2 @User3'
+                            'Example: `/create Project-Name @User1 @User2 @User3`'
+                        );
+                        break;
+                    case 'add':
+                        interaction.reply('' +
+                            'Command `/add` has 2 arguments:\n' +
+                            '- Project name\n' +
+                            '- Users (divide by space)\n' +
+                            'Example: `/add Project-Name @User1 @User2 @User3`'
                         );
                         break;
                     case 'partner':
                         interaction.reply('' +
-                            'Command partner has 1 argument:\n' +
+                            'Command `/partner` has 1 argument:\n' +
                             '- User\n' +
-                            'Example: /partner @User'
+                            'Example: `/partner @User`'
                         );
                         break;
                     default:
@@ -62,121 +73,131 @@ client.on('interactionCreate', interaction => {
             }
             break;
         case 'create':
-            let projectName = interaction.options.get('project-name').value;
-            let users = interaction.options.get('users').value.trim().split(/ +/g);
+            projectName = interaction.options.get('project-name').value;
+            users = interaction.options.get('users').value.trim().split(/ +/g);
 
-            interaction.reply('' +
-                'Project name: ' + projectName + '\n' +
-                'User IDs: ' + users
-            );
+            try {
+                interaction.reply('' +
+                    'Project name: ' + projectName + '\n' +
+                    'User IDs: ' + users
+                );
 
-            interaction.guild.roles.create({
-                name: projectName,
-                reason: 'New project',
-            })
-                .then(role => {
-                    interaction.editReply({
-                        content: 'Role created successfully.'
-                    });
-
-                    users.forEach(user => {
-                        if (user.startsWith('<@') && user.endsWith('>')) {
-                            user = user.slice(2, -1);
-                            if (user.startsWith('!')) {
-                                user = user.slice(1);
-                            }
-
-                            interaction.guild.members.fetch(user)
-                                .then(member => {
-                                    member.roles.add(role, interaction.guild.roles.fetch(1273387215233351703))
-                                });
-                        }
-                    });
-                    interaction.editReply({
-                        content: 'Roles assigned successfully.'
-                    });
-
-                    interaction.guild.channels.create({
-                        name: projectName,
-                        type: 4,
-                        permissionOverwrites: [
-                            {
-                                id: interaction.guild.roles.everyone.id,
-                                deny: [
-                                    PermissionsBitField.Flags.ViewChannel,
-                                ],
-                            },
-                            {
-                                id: role.id,
-                                allow: [
-                                    PermissionsBitField.Flags.ViewChannel,
-                                ],
-                            },
-                        ],
-                    })
-                        .then(category => {
-                            interaction.guild.channels.create({
-                                name: '💬︱chat',
-                                type: 0,
-                                parent: category.id,
-                            });
-
-                            interaction.guild.channels.create({
-                                name: '🔊︱voicechat',
-                                type: 2,
-                                parent: category.id,
-                            });
-
-                            interaction.editReply({
-                                content: `Project ${projectName} created successfully.`
-                            });
-                        })
-                        .catch(error => {
-                            console.log(error);
-                            interaction.editReply({
-                                content: 'An error occurred.'
-                            })
-                        });
-                })
-                .catch(error => {
-                    console.log(error);
-                    interaction.editReply({
-                        content: 'An error occurred.'
-                    })
+                const role = await interaction.guild.roles.create({
+                    name: projectName,
+                    reason: 'New project',
                 });
+
+                for (let user of users) {
+                    if (user.startsWith('<@') && user.endsWith('>')) {
+                        user = user.slice(2, -1);
+                        if (user.startsWith('!')) {
+                            user = user.slice(1);
+                        }
+
+                        const member = await interaction.guild.members.fetch(user);
+                        await member.roles.add([role, await interaction.guild.roles.cache.get('1273387215233351703')]);
+                    }
+                }
+
+                const category = await interaction.guild.channels.create({
+                    name: projectName,
+                    type: 4,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone.id,
+                            deny: [
+                                PermissionsBitField.Flags.ViewChannel,
+                            ],
+                        },
+                        {
+                            id: role.id,
+                            allow: [
+                                PermissionsBitField.Flags.ViewChannel,
+                            ],
+                        },
+                    ],
+                });
+                await interaction.guild.channels.create({
+                    name: '💬︱chat',
+                    type: 0,
+                    parent: category.id,
+                });
+
+                await interaction.guild.channels.create({
+                    name: '🔊︱voicechat',
+                    type: 2,
+                    parent: category.id,
+                });
+
+            } catch (error) {
+                console.log(`An error occurred.\n${error}`);
+                interaction.reply('An error occurred.');
+            }
+            break;
+        case 'add':
+            projectName = interaction.options.get('project-name').value;
+            users = interaction.options.get('users').value.trim().split(/ +/g);
+
+            try {
+                for (let user of users) {
+                    if (user.startsWith('<@') && user.endsWith('>')) {
+                        user = user.slice(2, -1);
+                        if (user.startsWith('!')) {
+                            user = user.slice(1);
+                        }
+
+                        const project = await interaction.guild.roles.cache.find(role => role.name === projectName);
+                        if (project !== undefined) {
+                            const member = await interaction.guild.members.fetch(user);
+                            await member.roles.add([project, await interaction.guild.roles.cache.get('1273387215233351703')]);
+
+                            interaction.reply('' +
+                                'Project name: ' + projectName + '\n' +
+                                'User IDs: ' + users
+                            );
+                        } else {
+                            interaction.reply('There is currently no project under that name.');
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log(`An error occurred.\n${error}`);
+                interaction.reply('An error occurred.');
+            }
             break;
         case 'partner':
-            let user = interaction.options.get('user').value;
+            try {
+                let user = interaction.options.get('user').value;
 
-            interaction.reply('Creating partnership with ' + user);
-            interaction.guild.channels.create({
-                name: 'chat-' + user,
-                type: 0,
-                parent: '1153293334878629899',
-                permissionOverwrites: [
-                    {
-                        id: interaction.guild.roles.everyone.id,
-                        deny: [
-                            PermissionsBitField.Flags.ViewChannel,
-                        ],
-                    },
-                    {
-                        id: user,
-                        allow: [
-                            PermissionsBitField.Flags.ViewChannel,
-                        ],
-                    },
-                ],
-            }).then(() => {
-                interaction.editReply({
-                    content: 'Partnership created successfully.'
+                await interaction.guild.channels.create({
+                    name: 'chat-' + user,
+                    type: 0,
+                    parent: '1153293334878629899',
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone.id,
+                            deny: [
+                                PermissionsBitField.Flags.ViewChannel,
+                            ],
+                        },
+                        {
+                            id: user,
+                            allow: [
+                                PermissionsBitField.Flags.ViewChannel,
+                            ],
+                        },
+                    ],
                 });
-            }).catch(error => {
-                console.log(error);
-                interaction.editReply({
-                    content: 'An error occured.'
-                });
-            });
+
+                const member = await interaction.guild.members.fetch(user);
+                await member.roles.add(await interaction.guild.roles.cache.get('1154357057688965200'));
+
+                interaction.reply('Creating partnership with ' + user);
+            } catch(error) {
+                console.log(`An error occurred.\n${error}`);
+                interaction.reply('An error occured.');
+            }
             break;
         default:
             interaction.reply('Invalid command. See /help for more information.');

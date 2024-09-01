@@ -36,6 +36,24 @@ const commands = [
         ]
     },
     {
+        name: 'add',
+        description: 'Add to project',
+        options: [
+            {
+                name: 'project-name',
+                description: 'Name for project to add users in.',
+                type: 3,
+                required: true,
+            },
+            {
+                name: 'users',
+                description: 'All users to add to the project.',
+                type: 3,
+                required: true,
+            },
+        ]
+    },
+    {
         name: 'partner',
         description: 'Partner up with someone',
         options: [
