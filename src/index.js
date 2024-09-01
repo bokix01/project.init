@@ -1,4 +1,4 @@
-const { Client, PermissionsBitField, IntentsBitField } = require('discord.js');
+const { Client, PermissionsBitField, IntentsBitField, ActivityType } = require('discord.js');
 require('dotenv').config();
 const { aboutBotEmbed } = require('./embeds');
 
@@ -14,7 +14,12 @@ const client = new Client({
 });
 
 client.on('ready', () => {
-   console.log('Bot ' + client.user.username + ' is ready to use.')
+   console.log('Bot ' + client.user.username + ' is ready to use.');
+
+   client.user.setActivity({
+       name: 'xiko',
+       type: ActivityType.Listening
+   })
 });
 
 client.on('interactionCreate', interaction => {
@@ -83,7 +88,7 @@ client.on('interactionCreate', interaction => {
 
                             interaction.guild.members.fetch(user)
                                 .then(member => {
-                                    member.roles.add(role)
+                                    member.roles.add(role, interaction.guild.roles.fetch(1273387215233351703))
                                 });
                         }
                     });
