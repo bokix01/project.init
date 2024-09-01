@@ -1,2 +1,2 @@
 # project.init
-Discord bot for project.init() server
+Assistant bot for [project.init()](https://discord.gg/EkUhXr5qKH) Discord server.
